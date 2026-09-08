@@ -29,6 +29,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter 
+} from "@/components/ui/dialog";
 import { Course, CourseEnrollment } from "@/lib/types";
 import { 
   getStoredCourses, 
@@ -82,6 +90,7 @@ export default function CoursesPage() {
 
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [courseToPurchase, setCourseToPurchase] = useState<Course | null>(null);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
 
   const refreshData = () => {
     setCourses(getStoredCourses());
@@ -122,12 +131,8 @@ export default function CoursesPage() {
     refreshData();
   };
 
-  const handleDeleteCourse = (courseId: string, title: string) => {
-    if (confirm(`هل أنت متأكد من حذف كورس "${title}"؟`)) {
-      deleteCourse(courseId);
-      toast({ title: "تم حذف الكورس بنجاح" });
-      refreshData();
-    }
+  const handleDeleteCourse = (course: Course) => {
+    setCourseToDelete(course);
   };
 
   // Filtered public courses (for student browsing)
@@ -166,10 +171,10 @@ export default function CoursesPage() {
             <div className="relative z-10 space-y-3 max-w-2xl text-right">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/20 text-primary-foreground font-black text-xs">
                 <GraduationCap size={14} className="text-primary" />
-                لوحة تحكم المُفهم (معلم / خبير)
+                لوحة تحكم المُفهم
               </div>
               <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-                إنشاء وإدارة الكورسات
+                الكورسات
               </h1>
               <p className="text-zinc-300 font-bold text-sm md:text-base leading-relaxed">
                 ارفع شروحاتك وفيديوهاتك مباشرة من جهازك، حدد سعر الكورس بالجنيه المصري، وتحكم في النشر وتابع مبيعاتك والطلاب المشتركين.
@@ -202,7 +207,7 @@ export default function CoursesPage() {
                 مكتبة الكورسات المشروحة
               </div>
               <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-                الكورسات الجاهزة
+                الكورسات
               </h1>
               <p className="text-zinc-300 font-bold text-sm md:text-base leading-relaxed">
                 تصفح أفضل الكورسات التعليمية المسجلة من قِبل نخبة من المفهمين المعتمدين، واشترك لتشاهد الدروس المحمية مباشرة داخل المنصة.
@@ -420,7 +425,7 @@ export default function CoursesPage() {
               <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed space-y-4">
                 <BookOpen className="w-12 h-12 text-zinc-300 mx-auto" />
                 <h3 className="font-black text-xl text-zinc-700">لم تشترك في أي كورس بعد</h3>
-                <p className="text-zinc-500 font-bold text-sm">تصفح قائمة الكورسات الجاهزة واشترك لمشاهدتها مباشرة.</p>
+                <p className="text-zinc-500 font-bold text-sm">تصفح قائمة الكورسات واشترك لمشاهدتها مباشرة.</p>
                 <Button onClick={() => setActiveTab("all")} className="bg-primary text-white font-black rounded-xl cursor-pointer">
                   استعراض الكورسات
                 </Button>
@@ -605,8 +610,9 @@ export default function CoursesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDeleteCourse(course.id, course.title)}
-                        className="text-red-500 hover:bg-red-50 h-10 w-10 rounded-xl cursor-pointer"
+                        onClick={() => handleDeleteCourse(course)}
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600 h-10 w-10 rounded-xl cursor-pointer"
+                        title="حذف هذا الكورس"
                       >
                         <Trash2 size={16} />
                       </Button>
@@ -617,6 +623,53 @@ export default function CoursesPage() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* نافذة تأكيد حذف الكورس */}
+        <Dialog open={!!courseToDelete} onOpenChange={(open) => !open && setCourseToDelete(null)}>
+          <DialogContent className="rounded-3xl p-6 text-right max-w-md bg-white dark:bg-zinc-900 border-2" dir="rtl">
+            <DialogHeader className="text-right space-y-2">
+              <DialogTitle className="text-xl font-black text-red-600 flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-600" />
+                تأكيد حذف الكورس
+              </DialogTitle>
+              <DialogDescription className="text-sm font-bold text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                هل أنت متأكد من حذف كورس &ldquo;{courseToDelete?.title}&rdquo; نهائياً؟ سيتم مسح الكورس ودروسه فوراً ولن يظهر بعد الآن.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCourseToDelete(null)}
+                className="rounded-xl font-bold cursor-pointer"
+              >
+                تراجع
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  if (courseToDelete) {
+                    const idToDelete = courseToDelete.id;
+                    deleteCourse(idToDelete);
+                    setCourses((prev) => prev.filter((c) => c.id !== idToDelete));
+                    setCourseToDelete(null);
+                    toast({
+                      title: "تم حذف الكورس بنجاح",
+                      description: "تمت إزالة الكورس نهائياً من لوحتك ومن المنصة."
+                    });
+                    refreshData();
+                  }
+                }}
+                className="rounded-xl font-black bg-red-600 hover:bg-red-700 text-white gap-2 cursor-pointer shadow-md"
+              >
+                <Trash2 className="w-4 h-4" />
+                نعم، احذف الكورس الآن
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* حوارات الإدارة والشراء */}
         <CourseEditorDialog

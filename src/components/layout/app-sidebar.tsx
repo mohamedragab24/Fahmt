@@ -134,7 +134,7 @@ export function AppSidebar() {
                     ? "bg-primary text-white shadow-sm" 
                     : "bg-zinc-800 text-white shadow-sm"
                 }`}>
-                  {isMufhem ? "مُفهم (معلم/خبير)" : "مُستفهم (طالب)"}
+                  {isMufhem ? "مُفهم" : "مُستفهم"}
                 </Badge>
               </div>
 
@@ -151,7 +151,7 @@ export function AppSidebar() {
                   <ArrowLeftRight className="w-4 h-4 text-primary" />
                 )}
                 <span>
-                  {isMufhem ? "التبديل إلى مُستفهم (طالب)" : "التبديل إلى مُفهم (شرح وتدريس)"}
+                  {isMufhem ? "التبديل إلى مُستفهم" : "التبديل إلى مُفهم"}
                 </span>
               </Button>
             </div>
@@ -164,7 +164,7 @@ export function AppSidebar() {
             
             <SidebarSeparator className="my-4" />
             
-            <NavItem href="/courses" icon={Layers} label={isMufhem ? "إنشاء وإدارة الكورسات" : "الكورسات الجاهزة"} />
+            <NavItem href="/courses" icon={Layers} label="الكورسات" />
             <NavItem href="/teachers" icon={Users} label="تصفح المفهمين" />
             <NavItem href="/portfolio" icon={Layout} label="تصفح أعمال المفهمين" />
             <NavItem href="/browse" icon={Search} label="تصفح الاستفهامات" />

@@ -17,8 +17,13 @@ import {
   Layers, 
   AlertCircle,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Bell,
+  BellRing,
+  User,
+  ExternalLink
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,6 +74,45 @@ export default function CourseDetailPage() {
       const enrollments = getStoredEnrollments();
       const myEnroll = enrollments.find(e => e.courseId === courseId && e.studentId === currentUserId);
       setUserEnrollment(myEnroll || null);
+    }
+  };
+
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && course?.instructorId) {
+      try {
+        const subs = JSON.parse(localStorage.getItem("fahimt_subscribed_instructors") || "[]");
+        setIsSubscribed(subs.includes(course.instructorId));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [course?.instructorId]);
+
+  const handleToggleSubscribe = () => {
+    if (!course?.instructorId) return;
+    try {
+      const subs = JSON.parse(localStorage.getItem("fahimt_subscribed_instructors") || "[]");
+      let updated: string[];
+      if (subs.includes(course.instructorId)) {
+        updated = subs.filter((id: string) => id !== course.instructorId);
+        setIsSubscribed(false);
+        toast({
+          title: "تم إيقاف الإشعارات",
+          description: `تم إيقاف إشعارات كورسات المُفهم ${course.instructorName}.`
+        });
+      } else {
+        updated = [...subs, course.instructorId];
+        setIsSubscribed(true);
+        toast({
+          title: "🔔 تم تفعيل الإشعارات بنجاح!",
+          description: `هتوصلك كل الكورسات والدروس الجديدة للمُفهم ${course.instructorName} أول ما تنزل.`
+        });
+      }
+      localStorage.setItem("fahimt_subscribed_instructors", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -172,7 +216,7 @@ export default function CourseDetailPage() {
         <div className="flex items-center justify-between">
           <Button asChild variant="ghost" className="font-black text-zinc-600 gap-2 hover:bg-white rounded-xl">
             <Link href="/courses">
-              <ArrowRight className="w-4 h-4" /> العودة إلى الكورسات الجاهزة
+              <ArrowRight className="w-4 h-4" /> العودة إلى الكورسات
             </Link>
           </Button>
 
@@ -282,14 +326,64 @@ export default function CourseDetailPage() {
                 </p>
               </div>
 
-              {/* معايير الحماية والأمان */}
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border flex items-start gap-3 text-xs font-bold text-zinc-600 dark:text-zinc-400">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <span className="font-black text-zinc-800 dark:text-zinc-200 block">حماية المحتوى وعلامة مائية ذكية:</span>
-                  <span>
-                    هذا المحتوى محمي بحقوق النشر، ويتم منع تسجيل الشاشة وتحميل الفيديو تلقائياً مع طباعة هوية الطالب على الشاشة.
-                  </span>
+              {/* بطاقة المُفهم مع صورته الشخصية وزر دخول الملف الشخصي وزر تفعيل الإشعارات */}
+              <div className="p-5 bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl border-2 border-zinc-200 dark:border-zinc-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <Avatar className="w-14 h-14 rounded-2xl border-2 border-primary/20 shadow-md shrink-0">
+                    <AvatarImage src={course.instructorAvatar} alt={course.instructorName} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-black text-lg">
+                      {course.instructorName?.charAt(0) || "م"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-base text-zinc-900 dark:text-white">
+                        {course.instructorName}
+                      </h4>
+                      <Badge className="bg-primary/15 text-primary border-none text-[11px] font-black px-2.5 py-0.5 rounded-lg">
+                        مُفهم
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-zinc-500 font-bold">
+                      مُقدم هذا الكورس • يمكنك متابعته واستلام إشعارات كورساته القادمة فور نزولها
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-xl font-black text-xs h-10 px-4 border-zinc-300 dark:border-zinc-700 hover:border-primary gap-1.5 cursor-pointer"
+                  >
+                    <Link href="/profile">
+                      <User className="w-3.5 h-3.5 text-primary" />
+                      <span>الملف الشخصي للمُفهم</span>
+                    </Link>
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handleToggleSubscribe}
+                    variant={isSubscribed ? "default" : "outline"}
+                    className={`rounded-xl font-black text-xs h-10 px-4 gap-2 cursor-pointer shadow-sm transition-all ${
+                      isSubscribed
+                        ? "bg-amber-500 hover:bg-amber-600 text-white border-none"
+                        : "border-amber-300 text-amber-700 dark:text-amber-300 bg-amber-50/60 hover:bg-amber-100"
+                    }`}
+                  >
+                    {isSubscribed ? (
+                      <>
+                        <BellRing className="w-4 h-4 text-white animate-bounce" />
+                        <span>الإشعارات مفعّلة 🔔</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="w-4 h-4 text-amber-600" />
+                        <span>تفعيل إشعارات الكورسات القادمة</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>

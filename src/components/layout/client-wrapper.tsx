@@ -13,27 +13,104 @@ import { PWAInstallBanner } from './pwa-install-banner';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 
+declare global {
+  interface Window {
+    google?: any;
+    googleTranslateElementInit?: () => void;
+  }
+}
+
 interface ClientWrapperProps {
   children: React.ReactNode;
 }
 
 export function ClientWrapper({ children }: ClientWrapperProps) {
   const [mounted, setMounted] = useState(false);
+  const [currentDir, setCurrentDir] = useState<"rtl" | "ltr">("rtl");
 
   useEffect(() => {
     setMounted(true);
+
+    // Read current language from Google Translate cookie or localStorage
+    const getIsEnglish = () => {
+      if (typeof document === "undefined") return false;
+      const match = document.cookie.match(/googtrans=\/([^/]+)\/([^;]+)/);
+      if (match && match[2] && (match[2] === "en" || match[2].startsWith("en"))) {
+        return true;
+      }
+      return localStorage.getItem("fahimt_language") === "en";
+    };
+
+    const isEn = getIsEnglish();
+    setCurrentDir(isEn ? "ltr" : "rtl");
+    document.documentElement.lang = isEn ? "en" : "ar";
+    document.documentElement.dir = isEn ? "ltr" : "rtl";
+
+    // Setup Google Translate
+    window.googleTranslateElementInit = () => {
+      if (window.google?.translate?.TranslateElement) {
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: "ar",
+            includedLanguages: "ar,en",
+            autoDisplay: false,
+          },
+          "google_translate_element"
+        );
+      }
+    };
+
+    if (!document.getElementById("google-translate-script")) {
+      const script = document.createElement("script");
+      script.id = "google-translate-script";
+      script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+      script.async = true;
+      document.body.appendChild(script);
+    } else if (window.google?.translate) {
+      window.googleTranslateElementInit();
+    }
+
+    // Auto-recover from stale Webpack chunks or ChunkLoadError after updates
+    const handleChunkError = (event: ErrorEvent | PromiseRejectionEvent) => {
+      const error = 'reason' in event ? event.reason : event.error;
+      const isChunkLoadError = 
+        error?.name === 'ChunkLoadError' || 
+        error?.message?.includes('Loading chunk') ||
+        error?.message?.includes('ChunkLoadError');
+
+      if (isChunkLoadError) {
+        const lastReload = sessionStorage.getItem('chunk_reload_retry');
+        const now = Date.now();
+        // Prevent infinite loops: reload if not reloaded within 10 seconds
+        if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+          sessionStorage.setItem('chunk_reload_retry', now.toString());
+          window.location.reload();
+        }
+      }
+    };
+
+    window.addEventListener('error', handleChunkError);
+    window.addEventListener('unhandledrejection', handleChunkError);
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(err => console.log('SW registration failed:', err));
       });
     }
+
+    return () => {
+      window.removeEventListener('error', handleChunkError);
+      window.removeEventListener('unhandledrejection', handleChunkError);
+    };
   }, []);
 
   return (
     <FirebaseClientProvider>
       <ThemeManager>
         <SidebarProvider defaultOpen={false}>
-          <div className="flex min-h-svh w-full bg-background flex-col relative overflow-x-hidden" dir="rtl">
+          <div className="flex min-h-svh w-full bg-background flex-col relative overflow-x-hidden" dir={currentDir}>
+            {/* عنصر ترجمة جوجل المخفي المطلوب لتشغيل محرك الترجمة */}
+            <div id="google_translate_element" style={{ display: "none" }} />
             <Header />
             <div className="flex flex-1 w-full">
               {/* القائمة الجانبية تم استرجاعها هنا */}

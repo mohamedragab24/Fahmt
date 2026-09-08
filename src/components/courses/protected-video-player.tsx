@@ -122,13 +122,26 @@ export function ProtectedVideoPlayer({
       setIsTabFocused(true);
     };
 
+    // Protect against getDisplayMedia (browser screen capture API)
+    if (typeof navigator !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      const originalGetDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getDisplayMedia = async () => {
+        setIsTabFocused(false);
+        setSecurityAlert("🛑 المتصفح حظر طلب تسجيل أو مشاركة الشاشة لحماية الكورس.");
+        if (videoRef.current) videoRef.current.pause();
+        throw new Error("Screen capture is prohibited by Fahimt platform DRM.");
+      };
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Print Screen or Screenshot combinations
+      // Print Screen or Screenshot combinations (Snipping tool, Win+Shift+S, Mac Cmd+Shift+3/4/5, Ctrl+P)
       if (
         e.key === "PrintScreen" || 
         e.keyCode === 44 ||
+        (e.key === "p" && (e.ctrlKey || e.metaKey)) ||
         (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4" || e.key === "5")) ||
-        (e.key === "s" && e.shiftKey && (e.metaKey || (e as any).windowsKey))
+        (e.shiftKey && (e.metaKey || (e as any).windowsKey) && (e.key === "s" || e.key === "S")) ||
+        (e.altKey && e.key === "PrintScreen")
       ) {
         e.preventDefault();
         try {
@@ -137,9 +150,9 @@ export function ProtectedVideoPlayer({
           }
         } catch (_) {}
         setIsTabFocused(false);
-        setSecurityAlert("تم تعطيل التقاط الشاشة لحماية حقوق المحتوى والمفهم.");
+        setSecurityAlert("🛑 ممنوع لقطة الشاشة أو تسجيل الفيديو! المتصفح حظر المحتوى فوراً.");
         if (videoRef.current) videoRef.current.pause();
-        setTimeout(() => setSecurityAlert(null), 4000);
+        setTimeout(() => setSecurityAlert(null), 4500);
       }
       // Inspect Element (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U)
       if (
@@ -148,7 +161,7 @@ export function ProtectedVideoPlayer({
         (e.ctrlKey && (e.key === "u" || e.key === "U" || e.key === "s" || e.key === "S"))
       ) {
         e.preventDefault();
-        setSecurityAlert("إجراء غير مصرح به: لا يمكن فحص أو حفظ ملفات الفيديو.");
+        setSecurityAlert("🛑 غير مسموح بفحص الصفحة أو حفظ الفيديو من المتصفح.");
         setTimeout(() => setSecurityAlert(null), 3000);
       }
     };
@@ -277,21 +290,21 @@ export function ProtectedVideoPlayer({
         </div>
 
         {/* Permanent Top Security Badge */}
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-white text-xs font-bold pointer-events-none">
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-white text-xs font-bold pointer-events-none">
           <Lock className="w-3.5 h-3.5 text-emerald-400" />
-          <span>عرض محمي وآمن</span>
+          <span>🔒 ممنوع لقطة الشاشة وتسجيل الفيديو</span>
         </div>
 
-        {/* Overlay when Tab Loses Focus (anti-screen recorders / multi-window recorders) */}
+        {/* Overlay when Tab Loses Focus / Screenshot triggered (anti-screen capture & recorders) */}
         {!isTabFocused && (
-          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-lg text-white p-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-primary/20 text-primary flex items-center justify-center animate-pulse">
-              <ShieldAlert className="w-8 h-8" />
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl text-white p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center animate-pulse">
+              <ShieldAlert className="w-9 h-9" />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-xl font-black">تم إيقاف العرض مؤقتاً</h3>
-              <p className="text-zinc-300 text-sm max-w-md">
-                لحماية محتوى المفهم ومنع التسجيل، يتم حجب الفيديو تلقائياً عند الانتقال إلى نافذة أخرى. انقر للعودة.
+            <div className="space-y-1.5 max-w-md">
+              <h3 className="text-xl font-black text-red-400">🛑 تم حجب الشاشة لحماية الفيديو</h3>
+              <p className="text-zinc-300 text-sm leading-relaxed">
+                المتصفح بيمنع لقطة الشاشة وتسجيل الفيديو تلقائياً عشان يحافظ على حقوق المُفهم ومجهوده. دوس على الزرار تحت عشان تكمل مشاهدة عادي.
               </p>
             </div>
             <Button 
@@ -302,9 +315,9 @@ export function ProtectedVideoPlayer({
                   setIsPlaying(true);
                 }
               }} 
-              className="bg-primary hover:bg-primary/90 text-white font-bold rounded-xl"
+              className="bg-primary hover:bg-primary/90 text-white font-black rounded-xl px-6 h-11"
             >
-              استئناف المشاهدة
+              كمّل مشاهدة الدرس
             </Button>
           </div>
         )}
